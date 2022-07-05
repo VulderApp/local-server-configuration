@@ -1,0 +1,98 @@
+version: '3.9'
+services:
+  proxy:
+    image: traefik:v2.7
+    command:
+      - "--api"
+      - "--api.dashboard"
+      - "--api.insecure"
+      - "--providers.docker"
+      - "--entrypoints.web.address=:80"
+    volumes:
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - vulder
+    ports:
+      - 5133:80
+      - 8080:8080
+  redis:
+    image: redis:6.2.6-alpine
+    command: ["redis-server", "--bind", "redis", "--port", "6379"]
+    networks:
+      - vulder
+    ports:
+      - 6379:6379
+  redis-web:
+    image: rediscommander/redis-commander:latest
+    environment:
+     - REDIS_HOSTS=local:redis:6379
+    networks:
+      - vulder
+    ports:
+     - 9080:8081
+  mongo-express:
+    image: mongo-express:latest
+    restart: always
+    networks:
+      - vulder
+    ports:
+      - 8081:8081
+  mongo:
+    container_name: mongo
+    image: mongo:4.2.21
+    volumes:
+      - vulder-data:/data/db
+    networks:
+      - vulder
+    ports:
+      - 27017:27017
+  school:
+    container_name: schools
+    build: ./School
+    networks:
+      - vulder
+    ports:
+      - 6000:80
+    environment:
+      - REDIS_CONNECTION_STRING=redis
+      - MONGODB_CONNECTION_STRING=mongodb://mongo:27017/
+    labels:
+      - "traefik.http.routers.blog.rule=Host(`localhost`)"
+      - "traefik.http.routers.school.rule=PathPrefix(`/school`)"
+      - "traefik.port=6000"
+  timetable:
+    build: ./Timetable
+    networks:
+      - vulder
+    ports:
+      - 6001:80
+    environment:
+      - BASE_API_URL=http://schools
+      - REDIS_CONNECTION_STRING=redis
+    labels:
+      - "traefik.http.routers.blog.rule=Host(`localhost`)"
+      - "traefik.http.routers.timetable.rule=PathPrefix(`/branches`) || PathPrefix(`/timetable`)"
+      - "traefik.port=6001"
+  form:
+    build: ./SchoolForm
+    networks:
+      - vulder
+    ports:
+      - 6002:80
+    environment:
+      - MONGODB_CONNECTION_STRING=mongodb://mongo:27017/
+      - USE_SENDGRID=false
+      - SENDGRID_API_KEY
+      - SENDGRID_EMAIL
+    labels:
+      - "traefik.http.routers.blog.rule=Host(`localhost`)"
+      - "traefik.http.routers.form.rule=PathPrefix(`/form`)"
+      - "traefik.port=6002"
+networks:
+  vulder:
+    driver: vulder-driver
+    external: true
+volumes:
+  vulder-data:
+    external: true

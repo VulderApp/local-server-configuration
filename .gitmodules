@@ -1,0 +1,9 @@
+[submodule "School"]
+	path = School
+	url = git@github.com:VulderApp/School.git
+[submodule "Timetable"]
+	path = Timetable
+	url = git@github.com:VulderApp/Timetable.git
+[submodule "SchoolForm"]
+	path = SchoolForm
+	url = git@github.com:VulderApp/SchoolForm.git
